@@ -34,3 +34,6 @@ loguru>=0.7.0
 # Optional: For advanced text processing
 beautifulsoup4>=4.12.0
 lxml>=4.9.3
+
+# Additional dependencies that may be missing
+packaging>=23.0
