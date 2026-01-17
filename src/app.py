@@ -4,7 +4,11 @@ import sys
 from pathlib import Path
 
 # Add src directory to path for imports
-sys.path.append(str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Set working directory to project root for Streamlit Cloud compatibility
+project_root = Path(__file__).parent.parent
+os.chdir(project_root)
 
 from utils import initialize_vector_db, generate_sql, get_database_stats
 from config import get_api_keys, validate_api_keys
@@ -56,7 +60,8 @@ def show_query_page():
     with col4:
         st.markdown("**Database:**")
         # Initialize database status
-        if not os.path.exists("./schema_db_residents"):
+        db_path = project_root / "schema_db_residents"
+        if not db_path.exists():
             with st.spinner("Init..."):
                 try:
                     initialize_vector_db()
@@ -411,7 +416,7 @@ def show_config_page():
     # Setup Instructions
     st.header("📋 Setup Instructions")
     
-    env_file_exists = os.path.exists('.env')
+    env_file_exists = (project_root / ".env").exists()
     
     if env_file_exists:
         st.success("✅ **.env file found**")
@@ -455,16 +460,19 @@ def show_config_page():
     # Database Status
     st.header("🗄️ Database Status")
     
+    db_path = project_root / "schema_db_residents"
+    schema_file = project_root / "data" / "tables_metadata.json"
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if os.path.exists("./schema_db_residents"):
+        if db_path.exists():
             st.success("✅ **Vector DB Ready**")
         else:
             st.warning("⏳ **Vector DB Not Initialized**")
     
     with col2:
-        if os.path.exists("tables_metadata.json"):
+        if schema_file.exists():
             st.success("✅ **Schema File Found**")
         else:
             st.error("❌ **Schema File Missing**")
