@@ -40,12 +40,12 @@ def show_query_page():
             st.error("⚠️ No API keys configured")
             return
         
-        # Model selection
+        # Model selection (Gemini first as default)
         available_models = []
-        if openai_configured:
-            available_models.append("OpenAI GPT")
         if gemini_configured:
             available_models.append("Google Gemini")
+        if openai_configured:
+            available_models.append("OpenAI GPT")
         
         selected_model = st.selectbox("AI Model:", available_models, label_visibility="collapsed")
     
@@ -137,26 +137,38 @@ def show_query_page():
     if generate_btn and user_question.strip():
         with st.spinner("🔄 Generating SQL query..."):
             try:
+                print(f"[STREAMLIT DEBUG] Starting SQL generation for: {user_question}")
                 # Determine LLM type
                 llm_type = "openai" if selected_model == "OpenAI GPT" else "gemini"
+                print(f"[STREAMLIT DEBUG] Using LLM type: {llm_type}")
                 
                 # Generate SQL
+                print("[STREAMLIT DEBUG] Calling generate_sql...")
                 sql_query = generate_sql(user_question, llm_type=llm_type)
+                # Handle Unicode in SQL output
+                clean_sql = sql_query.encode('ascii', 'ignore').decode('ascii') if sql_query else 'None'
+                print(f"[STREAMLIT DEBUG] SQL query received: {clean_sql}")
+                print(f"[STREAMLIT DEBUG] SQL query length: {len(sql_query) if sql_query else 'None'}")
                 
-                # Compact results header
-                col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
-                with col1:
-                    st.success("✅ **SQL Generated Successfully**")
-                with col2:
-                    st.download_button("📥", sql_query, f"query_{len(st.session_state.get('query_history', []))+1}.sql", mime="text/plain")
-                with col3:
-                    if st.button("📋 Copy"):
-                        st.toast("Copied!", icon="✅")
-                with col4:
-                    st.metric("", f"{len(sql_query)} chars", label_visibility="collapsed")
+                print("[STREAMLIT DEBUG] About to display results in UI...")
                 
-                # SQL query display (more compact)
+                # SIMPLE UI - Just show the result
+                st.success("SQL Generated Successfully!")
+                
+                st.subheader("Generated SQL Query:")
                 st.code(sql_query, language="sql")
+                
+                st.info(f"Query Length: {len(sql_query)} characters")
+                
+                # Simple download button
+                st.download_button(
+                    label="Download SQL Query", 
+                    data=sql_query, 
+                    file_name=f"query_{len(st.session_state.get('query_history', []))+1}.sql", 
+                    mime="text/plain"
+                )
+                
+                print("[STREAMLIT DEBUG] Simple UI displayed successfully!")
                 
                 # Save to session state for history
                 if 'query_history' not in st.session_state:
@@ -173,10 +185,14 @@ def show_query_page():
                     st.session_state.query_history = st.session_state.query_history[-10:]
                 
             except Exception as e:
+                print(f"[STREAMLIT DEBUG] Exception caught: {type(e).__name__}")
+                # Remove emojis from error message for console output
+                clean_error_msg = str(e).encode('ascii', 'ignore').decode('ascii')
+                print(f"[STREAMLIT DEBUG] Exception message: {clean_error_msg}")
                 error_message = str(e)
                 
                 # Display the detailed error message from utils.py
-                if error_message.startswith(('🚫', '🔑', '💳', '🌐', '❌')):
+                if error_message.startswith(('[RATE LIMIT]', '[AUTH ERROR]', '[BILLING ERROR]', '[NETWORK ERROR]', '[ERROR]')):
                     # Split the error message to display it better
                     lines = error_message.split('\n')
                     for line in lines:
